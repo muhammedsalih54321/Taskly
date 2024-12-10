@@ -4,11 +4,10 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:task_list/Ui/Splash_Screen.dart';
 
 void main()async {
-    WidgetsFlutterBinding.ensureInitialized();
-
+  WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  // await Hive.deleteBoxFromDisk('shopping_box');
   await Hive.openBox('shopping_box');
+  await Hive.openBox('completed_box');
   runApp(const MyApp());
 }
 
