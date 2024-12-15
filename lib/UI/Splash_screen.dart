@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   _navigateotherscreen() async {
-    await Future.delayed(Duration(seconds: 30), () async {
+    await Future.delayed(Duration(seconds:6), () async {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => HomePage()));
     });
@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ],
             totalRepeatCount: 4,
-            pause: const Duration(seconds: 4),
+            pause: const Duration(seconds: 2),
             displayFullTextOnTap: true,
             stopPauseOnTap: true,
           )

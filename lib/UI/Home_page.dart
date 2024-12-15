@@ -2,12 +2,13 @@ import 'dart:ui';
 
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:notifications_tut/Provider/Task_provider.dart';
 import 'package:notifications_tut/notification/notification.dart';
+import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hive_flutter/adapters.dart';
 
 DateTime scheduleTime = DateTime.now();
 
@@ -22,69 +23,11 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _taskController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
   final formKey = GlobalKey<FormState>();
-
-  // List of active tasks and completed tasks
-  List<Map<String, dynamic>> _tasks = [];
-  List<Map<String, dynamic>> _completedTasks = [];
-
-  // List to store multiple selected times
   List<TimeOfDay> _selectedTimes = [];
-
-  // Hive boxes
-  final _taskBox = Hive.box('shopping_box');
-  final _completedBox = Hive.box('completed_box');
-
   @override
   void initState() {
     super.initState();
     tz.initializeTimeZones(); // Initialize timezone
-    _refreshTasks(); // Load both active and completed tasks
-  }
-
-  // Refresh Tasks List
-  void _refreshTasks() {
-    setState(() {
-      _tasks = _taskBox.keys.map((key) {
-        final value = _taskBox.get(key);
-        return {
-          "key": key,
-          "Title": value["Title"],
-          "Times": value["Times"] ?? []
-        };
-      }).toList();
-
-      _completedTasks = _completedBox.keys.map((key) {
-        final value = _completedBox.get(key);
-        return {"key": key, "Title": value["Title"], "Time": value["Time"]};
-      }).toList();
-    });
-  }
-
-  // Add a New Task
-  Future<void> _createTask(Map<String, dynamic> newTask) async {
-    await _taskBox.add(newTask);
-    _refreshTasks();
-  }
-
-  // Move Task to Completed
-  Future<void> _moveToCompleted(int taskKey) async {
-    final task = _taskBox.get(taskKey);
-
-    if (task != null) {
-      // Add the task to the 'completed_box'
-      await _completedBox.add(task);
-
-      // Remove the task from the 'shopping_box'
-      await _taskBox.delete(taskKey);
-
-      _refreshTasks();
-    }
-  }
-
-  // Delete a Task from Completed
-  Future<void> _deleteCompletedTask(int completedKey) async {
-    await _completedBox.delete(completedKey);
-    _refreshTasks();
   }
 
   // Time Picker
@@ -146,18 +89,18 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(
                       width: 300.w,
                       height: 80.h,
-                      child: TextFormField( style: GoogleFonts.poppins(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black),
-                                   
+                      child: TextFormField( maxLines: 2,
+                        style: GoogleFonts.poppins(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black),
                         controller: _taskController,
                         decoration: InputDecoration(
                           labelText: 'Type your Task',
-                          labelStyle:GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.black) ,
+                          labelStyle: GoogleFonts.poppins(
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.black),
                           border: OutlineInputBorder(),
                         ),
                         validator: (task) {
@@ -249,12 +192,11 @@ class _HomePageState extends State<HomePage> {
                   onTap: () {
                     if (formKey.currentState!.validate() &&
                         _selectedTimes.isNotEmpty) {
-                      _createTask({
-                        "Title": _taskController.text,
-                        "Times": _selectedTimes
-                            .map((time) => time.format(context))
-                            .toList(),
-                      });
+                      Provider.of<TaskProvider>(context, listen: false).addTask(
+                          _taskController.text,
+                          _selectedTimes
+                              .map((e) => e.format(context))
+                              .toList());
 
                       for (final time in _selectedTimes) {
                         _scheduleNotification(
@@ -338,189 +280,144 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTaskList() {
-    return _tasks.isEmpty
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 300.h,
-                ),
-                Center(
-                    child: Text('No Tasks Available',
-                        style: TextStyle(fontSize: 18))),
-                SizedBox(
-                  height: 250.h,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: FloatingActionButton(
-                        onPressed: _showMyDialog,
-                        child: const Icon(Icons.add, color: Colors.white),
-                        backgroundColor: Colors.black,
+    return Stack(
+      children: [
+        Consumer<TaskProvider>(
+          builder: (context, provider, child) {
+            final tasks = provider.tasks;
+
+            if (tasks.isEmpty) {
+              return Center(child: Text("No Tasks Available"));
+            }
+
+            return ListView.builder(
+              itemCount: tasks.length,
+              itemBuilder: (_, index) {
+                final task = tasks[index];
+
+                return Card(
+                  child: Dismissible(
+                    key: ValueKey(task.key),
+                    background: Container(
+                      color: Colors.green,
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.only(left: 20),
+                      child:
+                          const Icon(Icons.done, color: Colors.white, size: 30),
+                    ),
+                    direction: DismissDirection.startToEnd,
+                    onDismissed: (_) => provider.completeTask(task.key!),
+                    child: ListTile(
+                      title: Text(
+                        task.title,
+                        style: GoogleFonts.poppins(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black),
+                      ),
+                      subtitle: Text(
+                        "Reminder: ${task.times.join(', ')}",
+                        style: GoogleFonts.poppins(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black),
                       ),
                     ),
-                  ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: FloatingActionButton(
+                    onPressed: _showMyDialog,
+                    child: const Icon(Icons.add, color: Colors.white),
+                    backgroundColor: Colors.black,
+                  ),
                 ),
               ],
             ),
-          )
-        : Stack(
-            children: [
-              ListView.builder(
-                itemCount: _tasks.length,
-                itemBuilder: (_, index) {
-                  final task = _tasks[index];
-                  final times = task['Times'] ?? [];
-
-                  return Card(
-                    child: Dismissible(
-                      key: ValueKey(task['key']),
-                      background: Container(
-                        color: Colors.green,
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.only(left: 20),
-                        child: const Icon(Icons.done,
-                            color: Colors.white, size: 30),
-                      ),
-                      direction: DismissDirection.startToEnd, //
-                      onDismissed: (_) => _moveToCompleted(task['key']),
-                      child: ListTile(
-                        title: Text(
-                          task['Title'],
-                          style: GoogleFonts.poppins(
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black),
-                        ),
-                        subtitle: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Reminder Time:  ',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black),
-                            ),
-                            ...times
-                                .map((time) => Text(
-                                      time,
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.black),
-                                    ))
-                                .toList(),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: FloatingActionButton(
-                          onPressed: _showMyDialog,
-                          child: const Icon(Icons.add, color: Colors.white),
-                          backgroundColor: Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          );
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _buildCompletedList() {
     return // Completed Tasks
-        _completedTasks.isEmpty
-            ? Column(
-                children: [
-                  SizedBox(
-                    height: 300.h,
-                  ),
-                  const Center(
-                      child: Text('No Completed Tasks',
-                          style: TextStyle(fontSize: 18))),
-                ],
-              )
-            : ListView.builder(
-                itemCount: _completedTasks.length,
-                itemBuilder: (_, index) {
-                  final completed = _completedTasks[index];
+        Consumer<TaskProvider>(
+      builder: (context, provider, child) {
+        final completedTasks = provider.completedTasks;
 
-                  return Card(
-                    child: Dismissible(
-                      key: ValueKey(completed['key']),
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.only(left: 20),
-                        child: const Icon(Icons.delete,
-                            color: Colors.white, size: 30),
-                      ),
-                      direction: DismissDirection.endToStart, // Swipe to delete
-                      onDismissed: (_) {
-                        _deleteCompletedTask(
-                            completed['key']); // Delete task on swipe
-                      },
-                      child: Stack(
-                        children: [
-                          ListTile(
-                            title: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  completed['Title'],
-                                  style: GoogleFonts.poppins(
-                                      decoration: TextDecoration.lineThrough,
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black),
-                                ),
-                                Icon(
-                                  Icons.done,
-                                  color: Colors.green,
-                                )
-                              ],
-                            ),
-                          ),
-                          ClipRRect(
-                            child: BackdropFilter(
-                                filter:
-                                    ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                                child: Container(
-                                  height: 60.h,
-                                  width: double.infinity.w,
-                                  decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      ),child: Center(child:Text(
-                                  'Completed',
-                                  style: GoogleFonts.poppins(
-                                     
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black),
-                                ) ,),
-                                ),),
-                          )
-                        ],
+        if (completedTasks.isEmpty) {
+          return Center(child: Text("No Completed Tasks"));
+        }
+
+        return ListView.builder(
+          itemCount: completedTasks.length,
+          itemBuilder: (_, index) {
+            final task = completedTasks[index];
+
+            return Card(
+              child: Dismissible(
+                key: ValueKey(task.key),
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: 20),
+                  child:
+                      const Icon(Icons.delete, color: Colors.white, size: 30),
+                ),
+                direction: DismissDirection.endToStart,
+                onDismissed: (_) => provider.deleteCompletedTask(task.key!),
+                child: Stack(
+                  children: [
+                    ListTile(
+                      title: Text(
+                        task.title,
+                        style: GoogleFonts.poppins(
+                            decoration: TextDecoration.lineThrough,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black),
                       ),
                     ),
-                  );
-                },
-              );
+                    ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                      child: Container(
+                        height: 60.h,
+                        width: double.infinity.w,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Completed',
+                            style: GoogleFonts.poppins(
+                                fontSize: 18.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

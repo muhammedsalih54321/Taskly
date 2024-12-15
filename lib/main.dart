@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:notifications_tut/Provider/Task_provider.dart';
 import 'package:notifications_tut/UI/Splash_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'notification/notification.dart'; // Ensure you have a properly implemented NotificationService
 
@@ -13,7 +15,13 @@ void main() async {
   await NotificationService.init(); // Initialize notification service
   tz.initializeTimeZones(); // Initialize timezone data
 
-  runApp(const MyApp());
+    runApp(
+    ChangeNotifierProvider(
+      create: (context) => TaskProvider(),
+      child: const MyApp(),
+    ),
+  );
+
 }
 
 class MyApp extends StatelessWidget {
