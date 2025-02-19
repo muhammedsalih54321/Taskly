@@ -21,7 +21,7 @@ void main() async {
       child: const MyApp(),
     ),
   );
-
+SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 }
 
 class MyApp extends StatelessWidget {

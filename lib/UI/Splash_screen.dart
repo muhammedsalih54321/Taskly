@@ -62,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> {
               'Created By',
               style: GoogleFonts.poppins(
                 color: Colors.black,
-                fontSize: 16.sp,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -70,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen> {
               'Salih',
               style: GoogleFonts.poppins(
                 color: Colors.black,
-                fontSize: 18.sp,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
