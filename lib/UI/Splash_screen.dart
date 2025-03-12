@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   _navigateotherscreen() async {
-    await Future.delayed(Duration(seconds:6), () async {
+    await Future.delayed(Duration(seconds: 6), () async {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => HomePage()));
     });
@@ -32,7 +32,7 @@ class _SplashScreenState extends State<SplashScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image.asset(
-            'assets/images/rafiki.png',
+           'assets/images/rafiki.png',
             height: 100.h,
             width: 100.w,
           ),
@@ -55,28 +55,6 @@ class _SplashScreenState extends State<SplashScreen> {
           )
         ],
       )),
-      floatingActionButton: Center(
-        child: Column( mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              'Created By',
-              style: GoogleFonts.poppins(
-                color: Colors.black,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-             Text(                                                                            
-              'Salih',
-              style: GoogleFonts.poppins(
-                color: Colors.black,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
